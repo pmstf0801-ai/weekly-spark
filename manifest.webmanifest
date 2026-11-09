@@ -1,0 +1,24 @@
+{
+ "name": "Weekly Spark ⚡",
+ "short_name": "Weekly Spark",
+ "description": "AI가 정리한 전기·통신·소방 소식 · 주택·건축 편",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#14213d",
+ "theme_color": "#14213d",
+ "lang": "ko",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
+}
