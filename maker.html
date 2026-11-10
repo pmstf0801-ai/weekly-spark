@@ -121,14 +121,15 @@ function build(d,wl){const m=d.meta,o=[];
  +`<div style="font-size:12.5px;color:#c9d3e8;margin-top:10px;">${esc(m.period)} · 발행 ${esc(m.issued)}</div>`
  +`<div style="margin:16px auto 0 auto;max-width:620px;border-top:1px solid rgba(255,255,255,.18);padding-top:14px;font-size:15px;line-height:1.7;color:#fff;">${rich(m.one_line).split(`color:${BLUE}`).join(`color:${SPARK}`)}</div></div>`);
  o.push('<div class="ws-pad" style="padding:4px 28px 28px 28px;">');
- const r=d.radar||{items:[]};const top=(r.items||[]).some(it=>it.stage==='시행'||it.stage==='공포');
+ const r=d.radar||{items:[]};if(!r.none_msg)r.none_msg='이번 기간 감시 대상 법규 변경 없음';const top=(r.items||[]).some(it=>it.stage==='시행'||it.stage==='공포');
  if(top)o.push(radar(r));
  if(d.numbers&&d.numbers.length){const nums=d.numbers.map(n=>`<div style="padding:4px 4px;"><div style="font-size:26px;font-weight:900;color:${NAVY};">${esc(n.big)}<span style="font-size:13px;color:${BLUE};font-weight:800;"> ${esc(n.unit)}</span></div>${P(n.t,12.5,SUB,'margin:3px 0 0 0;')}</div>`);
   o.push(head('BY THE NUMBERS','📊 숫자로 보는 이번 호')+`<div style="background:${BG};border-top:3px solid ${SPARK};border-radius:10px;padding:6px 8px;">${grid(nums,3)}</div>`);}
  if(d.top3&&d.top3.length)o.push(head('TOP 3','🔥 이번 호 꼭 볼 3건'));
  (d.top3||[]).forEach((a,i)=>o.push(topCard(i+1,a)));
- if(d.briefs&&d.briefs.length)o.push(head('BRIEFS','📰 분야별 짧은 소식'));
- for(const f of d.briefs||[]){const lis=f.items.map(b=>`<li style="font-size:13.5px;line-height:1.7;color:${INK};margin-bottom:3px;">${rich(b.t)} <span style="font-size:12px;color:${SUB};">(${esc(b.src)})</span> ${link(b.url,'→')}</li>`).join('');
+ const briefs=(d.briefs||[]).filter(f=>f.items&&f.items.length);
+ if(briefs.length)o.push(head('BRIEFS','📰 분야별 짧은 소식'));
+ for(const f of briefs){const lis=f.items.map(b=>`<li style="font-size:13.5px;line-height:1.7;color:${INK};margin-bottom:3px;">${rich(b.t)} <span style="font-size:12px;color:${SUB};">(${esc(b.src)})</span> ${link(b.url,'→')}</li>`).join('');
   o.push(`<div style="border:1px solid ${LINE};border-radius:10px;padding:10px 16px;margin-bottom:8px;"><div style="font-size:14px;font-weight:800;color:${NAVY};margin-bottom:4px;">${FIELD[f.field]||''} ${esc(f.field)}</div><ul style="margin:0 0 0 18px;padding:0;">${lis}</ul></div>`);}
  if(!top)o.push(radar(r));
  let rows='';for(const g of wl.groups){const chips=g.items.map(x=>`<a href="${attr(lawUrl(x))}" target="_blank" style="display:inline-block;margin:2px 2px;padding:3px 10px;border:1px solid ${LINE};border-radius:999px;background:#fff;color:${NAVY};font-size:12px;font-weight:700;text-decoration:none;">${esc(x.label||x.name)}</a>`).join(' ');
