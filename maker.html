@@ -167,7 +167,7 @@ function fmt(dt){return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(
 function addDays(dt,n){const x=new Date(dt);x.setDate(x.getDate()+n);return x;}
 function info(){const v=$('pubDate').value;if(!v)return null;const dt=new Date(v+'T00:00:00');
  const weeks=Math.round((dt-BASE)/(7*864e5));const main=weeks%2===0;const vol=1+Math.floor(weeks/2);
- const from=addDays(dt,main?-14:-7),to=addDays(dt,-1);return {dt,weeks,main,vol,from,to};}
+ const from=addDays(dt,(main&&weeks>0)?-14:-7),to=addDays(dt,-1);return {dt,weeks,main,vol,from,to};}
 function nextMonday(){const t=new Date();t.setHours(0,0,0,0);const add=(8-t.getDay())%7;return addDays(t,add);}
 function prompt(){const i=info();if(!i)return '';const VV=String(i.vol).padStart(2,'0');
  const per=`${fmt(i.from)} ~ ${fmt(i.to)}`;const pub=fmt(i.dt)+'(월)';
