@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weekly Spark 생성기</title><meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+body{margin:0;background:#eceff4;font-family:'Pretendard','Malgun Gothic','맑은 고딕',sans-serif;color:#1f2937}
+.wrap{max-width:980px;margin:0 auto;padding:20px}
+.hd{background:#14213d;color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:14px}
+.hd b{color:#f5b301}
+.card{background:#fff;border:1px solid #e3e7ee;border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.card h2{margin:0 0 6px 0;font-size:17px;color:#14213d}
+.card p{margin:4px 0;font-size:14px;line-height:1.6}
+.n{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:#f5b301;color:#14213d;font-weight:800;margin-right:6px;font-size:13px}
+textarea{width:100%;box-sizing:border-box;min-height:220px;font-family:Consolas,monospace;font-size:12.5px;border:1px solid #cfd6e2;border-radius:8px;padding:10px}
+button{background:#14213d;color:#f5b301;border:0;border-radius:999px;padding:9px 18px;font-weight:800;font-size:14px;cursor:pointer;margin:4px 6px 4px 0}
+button.sub{background:#eef4ff;color:#14213d}
+button:disabled{opacity:.4;cursor:default}
+.msg{font-size:13.5px;margin-top:6px;white-space:pre-wrap}
+.ok{color:#047857}.err{color:#b42318}
+iframe{width:100%;height:640px;border:1px solid #e3e7ee;border-radius:10px;background:#fff}
+input[type=date]{font-size:14px;padding:4px 8px}
+small{color:#5b6472}
+</style></head>
+<body><div class="wrap">
+<div class="hd"><div style="font-size:22px;font-weight:900">Weekly <b>Spark</b> ⚡ 생성기</div>
+<div style="font-size:13px;color:#c9d3e8;margin-top:4px">사내 GPT 등 어떤 AI로도 새 호를 만들 수 있게 해 주는 도구 · 이 페이지 안에서만 동작(입력 내용은 어디에도 전송되지 않음)</div></div>
+
+<div class="card"><h2><span class="n">1</span>AI에 붙여 넣을 요청문 복사</h2>
+<p>발행일(월요일)을 고르고 <b>요청문 복사</b> → 사내 GPT(모델 <b>GPT-6.1 Terra</b>, 웹 검색 켜기) 새 채팅에 붙여 넣기.</p>
+<p>발행일 <input type="date" id="pubDate"> <span id="kind" style="font-weight:800;color:#2563eb"></span></p>
+<button onclick="copyPrompt()">요청문 복사</button> <button class="sub" onclick="togglePrompt()">요청문 보기</button>
+<div class="msg" id="pmsg"></div>
+<textarea id="promptBox" style="display:none" readonly></textarea>
+</div>
+
+<div class="card"><h2><span class="n">2</span>AI 답(JSON) 붙여 넣고 만들기</h2>
+<p>AI가 준 코드 블록 전체를 아래에 붙여 넣고 <b>만들기</b>. (```json 표시가 섞여 있어도 됩니다)</p>
+<textarea id="json" placeholder='{"meta": {...}, "radar": {...}, ...}'></textarea>
+<button onclick="make()">만들기</button>
+<div class="msg" id="mmsg"></div>
+</div>
+
+<div class="card" id="outCard" style="display:none"><h2><span class="n">3</span>확인하고 내려받기</h2>
+<p>아래 미리보기에서 내용을 확인한 뒤 두 파일을 내려받아 깃허브에 올리세요 (Add file → Upload files → Commit changes).</p>
+<button id="dlVol" onclick="dlVol()">새 호 파일 내려받기</button>
+<button id="dlIdx" onclick="dlIdx()">index.html 내려받기</button>
+<button class="sub" onclick="copyMail()">스티비 메일 본문 복사</button>
+<button class="sub" onclick="copyEP()">EP 붙여넣기용 HTML 복사</button>
+<div class="msg" id="omsg"></div>
+<p><small>index.html은 현재 사이트의 목록을 불러와 새 호 카드를 맨 위에 넣습니다. 불러오기가 안 되면 아래에서 기존 index.html 파일을 골라 주세요.</small> <input type="file" id="idxFile" accept=".html"></p>
+<iframe id="pv"></iframe>
+</div>
+<p style="font-size:12px;color:#8a93a3">Weekly Spark 생성기 v1 · 편집 기준은 요청문 안에 들어 있습니다. 결과는 반드시 원문 링크로 확인 후 게시하세요.</p>
+</div>
+
+<script>
+// ======== 고정 데이터 ========
+const BASE = new Date('2026-11-09T00:00:00');
+const WATCH = {"groups":[{"field":"전기","items":[{"name":"전기안전관리법"},{"name":"전기공사업법"},{"name":"전력기술관리법"},{"name":"전기설비기술기준","type":"행정규칙"},{"name":"한국전기설비규정","type":"행정규칙","label":"KEC(한국전기설비규정)"},{"name":"환경친화적 자동차의 개발 및 보급 촉진에 관한 법률","label":"친환경자동차법(충전시설)"}]},{"field":"통신","items":[{"name":"정보통신공사업법"},{"name":"방송통신설비의 기술기준에 관한 규정","label":"방송통신설비 기술기준 규정"},{"name":"지능형 홈네트워크 설비 설치 및 기술기준","type":"행정규칙","label":"지능형 홈네트워크 기준"}]},{"field":"소방","items":[{"name":"소방시설 설치 및 관리에 관한 법률","label":"소방시설법"},{"name":"화재의 예방 및 안전관리에 관한 법률","label":"화재예방법"},{"name":"소방시설공사업법"},{"name":"NFPC·NFTC","label":"NFPC·NFTC 최신본 모음","url":"https://www.law.go.kr/lbook/lbInfoR.do?lbookSeq=100443"},{"name":"소방관계법령","label":"소방관계법령 모음","url":"https://www.law.go.kr/lbook/lbInfoR.do?lbookSeq=4941"}]},{"field":"주택·건축","items":[{"name":"주택법"},{"name":"주택건설기준 등에 관한 규정","label":"주택건설기준 규정"},{"name":"주택건설기준 등에 관한 규칙","label":"주택건설기준 규칙"},{"name":"건축법"},{"name":"건축물의 설비기준 등에 관한 규칙","label":"건축물 설비기준 규칙"},{"name":"공동주택관리법"},{"name":"녹색건축물 조성 지원법","label":"녹색건축물법(제로에너지)"}]},{"field":"안전","items":[{"name":"산업안전보건법"},{"name":"중대재해 처벌 등에 관한 법률","label":"중대재해처벌법"},{"name":"건설기술 진흥법"}]},{"field":"예고 확인처","items":[{"name":"법제처 입법예고","url":"https://www.moleg.go.kr/lawinfo/makingList.mo?mid=a10104010000"},{"name":"국민참여입법센터","url":"https://opinion.lawmaking.go.kr/"},{"name":"NFTC 제·개정 예고","url":"https://nftc.nfire.go.kr/"}]}]};
+const SITE = 'https://pmstf0801-ai.github.io/weekly-spark/';
+const LINE2 = '작성 정영운 (전기) | AI가 수집·요약하고 작성자가 검토했습니다';
+const LINE3 = '공개된 보도·법령 정보를 개인이 정리한 학습·공유용 참고자료이며, 특정 기관·회사의 공식 입장이 아닙니다.';
+
+// ======== 생성기 (build.py와 같은 결과) ========
+const NAVY="#14213d",NAVY2="#24406f",INK="#1f2937",SUB="#5b6472",LINE="#e3e7ee",BG="#f4f6fa",SPARK="#f5b301",BLUE="#2563eb",BLUE_BG="#eef4ff";
+const FONT="'Pretendard','Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif";
+const STAGE={"예고":["#e8eefc","#1d4ed8"],"공포":["#fff4d6","#a15c00"],"시행":["#fde8e8","#b42318"]};
+const FIELD={"전기":"⚡","통신":"📡","소방":"🧯","주택·건축":"🏠","안전":"🦺","예고 확인처":"📮"};
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const attr=s=>esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+const rich=s=>esc(s).replace(/\*\*(.+?)\*\*/g,`<b style="color:${BLUE};">$1</b>`);
+function diffText(s){return rich(s).replace(/\[\[\+(.+?)\+\]\]/g,'<span style="color:#1d4ed8;font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;background:#eef4ff;">$1</span>').replace(/\[\[-(.+?)-\]\]/g,'<span style="color:#b42318;text-decoration:line-through;background:#fdecec;">$1</span>');}
+const link=(u,l)=>`<a href="${attr(u)}" target="_blank" style="color:${BLUE};font-weight:700;text-decoration:none;white-space:nowrap;">${esc(l)}</a>`;
+const linksOf=it=>(it.links||[]).map(([l,u])=>link(u,l)).join(' · ');
+function diffCard(it,inner){const d=it.diff;
+ const col=(lines,empty)=>(!lines||!lines.length)?`<div style="font-size:13px;color:#8a93a3;font-style:italic;">${esc(empty)}</div>`:lines.map(x=>`<p style="margin:0 0 6px 0;font-size:13.5px;line-height:1.75;color:${INK};">${diffText(x)}</p>`).join('');
+ const links=linksOf(it);
+ const wrap=inner?`<div style="border-top:1px solid ${LINE};">`:`<div style="margin:10px 0 0 0;border:1px solid ${LINE};border-radius:10px;overflow:hidden;">`;
+ return wrap+`<div style="background:${BG};padding:8px 14px;font-size:13px;font-weight:800;color:${NAVY};">📜 신구대조 — ${esc(it.law)} ${esc(d.title)}</div>`
+ +`<table role="presentation" style="border-collapse:collapse;width:100%;"><tr>`
+ +`<td class="ws-col ws-colsep" style="width:50%;vertical-align:top;padding:10px 14px;border-right:1px solid ${LINE};">`
+ +`<div style="font-size:11.5px;font-weight:800;color:#b42318;margin-bottom:4px;">개정 전</div>${col(d.old,d.old_empty||'(종전 조문 없음)')}</td>`
+ +`<td class="ws-col" style="width:50%;vertical-align:top;padding:10px 14px;">`
+ +`<div style="font-size:11.5px;font-weight:800;color:#1d4ed8;margin-bottom:4px;">개정 후 <span style="font-weight:600;color:${SUB};">(밑줄 = 바뀐 부분)</span></div>${col(d.new,'(삭제)')}</td>`
+ +`</tr></table>`
+ +`<div style="padding:8px 14px;border-top:1px solid ${LINE};font-size:12px;color:${SUB};line-height:1.6;">`
+ +`${rich(d.note||'')} ${links?'· 원문 바로가기: '+links:''}</div></div>`;}
+function lawUrl(x){if(x.url)return x.url;const kind=x.type==='행정규칙'?'행정규칙':'법령';return `https://www.law.go.kr/${encodeURIComponent(kind)}/${encodeURIComponent(x.name.replace(/\s+/g,''))}`;}
+const P=(t,size=14,color=INK,extra='')=>`<p style="margin:0 0 6px 0;font-size:${size}px;line-height:1.7;color:${color};${extra}">${rich(t)}</p>`;
+const head=(eng,title)=>`<div style="margin:34px 0 12px 0;"><div style="font-size:11px;letter-spacing:2px;font-weight:800;color:${BLUE};">${esc(eng)}</div><div style="font-size:19px;font-weight:800;color:${INK};margin-top:2px;">${title}</div></div>`;
+function radar(r){const items=r.items||[];
+ if(!items.length)return head('LAW RADAR','⚖️ 법규 레이더')+`<div style="background:${BG};border-radius:10px;padding:14px 18px;font-size:14px;color:${SUB};">${rich(r.none_msg||'이번 기간 감시 대상 법규 변경 없음')}</div>`;
+ let cards='';
+ for(const it of items){const [bg,fg]=STAGE[it.stage]||['#eee','#333'];const links=linksOf(it);
+  const row=(label,val,extra='')=>`<tr><td class="ws-lab" style="width:118px;padding:7px 10px;vertical-align:top;font-size:12px;font-weight:800;color:${SUB};white-space:nowrap;">${label}</td><td class="ws-val" style="padding:7px 10px;vertical-align:top;font-size:13.5px;line-height:1.65;color:${INK};${extra}">${val}</td></tr>`;
+  cards+=`<div style="border:1px solid ${LINE};border-radius:10px;overflow:hidden;margin:0 0 10px 0;"><div style="background:${BG};padding:10px 12px;">`
+  +`<span style="display:inline-block;padding:2px 9px;border-radius:999px;background:${bg};color:${fg};font-weight:800;font-size:12px;">[${esc(it.stage)}]</span> `
+  +`<b style="font-size:15px;color:${INK};">${esc(it.law)}</b><div style="font-size:12px;color:${SUB};margin-top:3px;">${esc(it.ref||'')}</div></div>`
+  +`<table role="presentation" style="border-collapse:collapse;width:100%;">`
+  +row('무엇이 바뀌나',rich(it.what))+row('시행일',esc(it.date),'font-weight:700;')+row('적용 기준(부칙)',rich(it.apply))+row('💡 설계·시공 영향',rich(it.impact))+(links?row('링크',links):'')
+  +'</table>'+(it.diff?diffCard(it,true):'')+'</div>';}
+ const note=r.note?`<div style="font-size:12px;color:${SUB};margin-top:2px;line-height:1.6;">${rich(r.note)}</div>`:'';
+ return head('LAW RADAR','⚖️ 법규 레이더 — 내 프로젝트에 적용되나?')+cards+note;}
+function grid(cells,cols){let o='<table role="presentation" style="border-collapse:separate;border-spacing:8px;width:100%;">';
+ for(let i=0;i<cells.length;i+=cols)o+='<tr>'+cells.slice(i,i+cols).map(c=>`<td class="ws-col" style="width:${Math.floor(100/cols)}%;vertical-align:top;padding:0;">${c}</td>`).join('')+'</tr>';return o+'</table>';}
+function topCard(i,a){const meta=`${FIELD[a.field]||''} ${esc(a.field)} · ${esc(a.source)} · ${esc(a.date)}`;
+ const lines=(a.summary||[]).map(t=>`<li style="font-size:14px;line-height:1.7;color:${INK};margin-bottom:2px;">${rich(t)}</li>`).join('');
+ return `<div style="background:#fff;border:1px solid ${LINE};border-radius:12px;padding:18px 20px;margin:0 0 12px 0;"><table role="presentation" style="border-collapse:collapse;width:100%;"><tr>`
+ +`<td style="width:44px;vertical-align:top;padding:0;"><div style="width:34px;height:34px;line-height:34px;text-align:center;border-radius:9px;background:${NAVY};color:${SPARK};font-weight:900;font-size:15px;">${i}</div></td>`
+ +`<td style="vertical-align:top;padding:0;"><div style="font-size:12px;color:${SUB};">${meta}</div>`
+ +`<div style="font-size:18px;font-weight:800;color:${INK};line-height:1.45;margin:4px 0 8px 0;">${esc(a.title)}</div>`
+ +`<ul style="margin:0 0 8px 18px;padding:0;">${lines}</ul>`
+ +`<div style="background:${BLUE_BG};border-left:3px solid ${BLUE};border-radius:0 8px 8px 0;padding:9px 14px;font-size:13.5px;line-height:1.65;color:${INK};"><b style="color:${NAVY};">💡 현장 한 줄</b> — ${rich(a.insight)}</div>`
+ +`<div style="margin-top:8px;">${link(a.url,'원문 보기 →')}</div></td></tr></table></div>`;}
+function build(d,wl){const m=d.meta,o=[];
+ o.push(`<div style="max-width:880px;margin:0 auto;font-family:${FONT};color:${INK};background:#fff;border:1px solid ${LINE};border-radius:16px;overflow:hidden;">`);
+ const badges=m.badges.map(b=>`<span style="display:inline-block;margin:0 3px;padding:2px 11px;border:1px solid ${SPARK};border-radius:999px;color:${SPARK};font-size:11.5px;font-weight:800;letter-spacing:1px;">${esc(b)}</span>`).join('');
+ o.push(`<div style="background:${NAVY};background-image:linear-gradient(160deg,${NAVY} 0%,${NAVY2} 100%);padding:30px 26px 24px 26px;text-align:center;"><div>${badges}</div>`
+ +`<div style="font-size:40px;font-weight:900;color:#fff;margin:14px 0 4px 0;letter-spacing:-1px;">Weekly <span style="color:${SPARK};">Spark</span> ⚡</div>`
+ +`<div style="font-size:13px;color:#c9d3e8;font-weight:700;">${esc(m.subtitle)}</div>`
+ +`<div style="font-size:12.5px;color:#c9d3e8;margin-top:10px;">${esc(m.period)} · 발행 ${esc(m.issued)}</div>`
+ +`<div style="margin:16px auto 0 auto;max-width:620px;border-top:1px solid rgba(255,255,255,.18);padding-top:14px;font-size:15px;line-height:1.7;color:#fff;">${rich(m.one_line).split(`color:${BLUE}`).join(`color:${SPARK}`)}</div></div>`);
+ o.push('<div class="ws-pad" style="padding:4px 28px 28px 28px;">');
+ const r=d.radar||{items:[]};const top=(r.items||[]).some(it=>it.stage==='시행'||it.stage==='공포');
+ if(top)o.push(radar(r));
+ if(d.numbers&&d.numbers.length){const nums=d.numbers.map(n=>`<div style="padding:4px 4px;"><div style="font-size:26px;font-weight:900;color:${NAVY};">${esc(n.big)}<span style="font-size:13px;color:${BLUE};font-weight:800;"> ${esc(n.unit)}</span></div>${P(n.t,12.5,SUB,'margin:3px 0 0 0;')}</div>`);
+  o.push(head('BY THE NUMBERS','📊 숫자로 보는 이번 호')+`<div style="background:${BG};border-top:3px solid ${SPARK};border-radius:10px;padding:6px 8px;">${grid(nums,3)}</div>`);}
+ if(d.top3&&d.top3.length)o.push(head('TOP 3','🔥 이번 호 꼭 볼 3건'));
+ (d.top3||[]).forEach((a,i)=>o.push(topCard(i+1,a)));
+ if(d.briefs&&d.briefs.length)o.push(head('BRIEFS','📰 분야별 짧은 소식'));
+ for(const f of d.briefs||[]){const lis=f.items.map(b=>`<li style="font-size:13.5px;line-height:1.7;color:${INK};margin-bottom:3px;">${rich(b.t)} <span style="font-size:12px;color:${SUB};">(${esc(b.src)})</span> ${link(b.url,'→')}</li>`).join('');
+  o.push(`<div style="border:1px solid ${LINE};border-radius:10px;padding:10px 16px;margin-bottom:8px;"><div style="font-size:14px;font-weight:800;color:${NAVY};margin-bottom:4px;">${FIELD[f.field]||''} ${esc(f.field)}</div><ul style="margin:0 0 0 18px;padding:0;">${lis}</ul></div>`);}
+ if(!top)o.push(radar(r));
+ let rows='';for(const g of wl.groups){const chips=g.items.map(x=>`<a href="${attr(lawUrl(x))}" target="_blank" style="display:inline-block;margin:2px 2px;padding:3px 10px;border:1px solid ${LINE};border-radius:999px;background:#fff;color:${NAVY};font-size:12px;font-weight:700;text-decoration:none;">${esc(x.label||x.name)}</a>`).join(' ');
+  rows+=`<tr><td style="width:96px;padding:7px 8px;vertical-align:top;font-size:12.5px;font-weight:800;color:${NAVY};white-space:nowrap;">${FIELD[g.field]||''} ${esc(g.field)}</td><td style="padding:5px 4px;">${chips}</td></tr>`;}
+ o.push(head('LAW LINKS','📚 법규 바로가기 <span style="font-size:12px;color:#5b6472;font-weight:600;">— 누르면 항상 현행 원문</span>')+`<table role="presentation" style="border-collapse:collapse;width:100%;background:${BG};border-radius:10px;">${rows}</table>`);
+ o.push(`<div style="margin:26px 0 0 0;border-left:4px solid ${SPARK};padding:4px 0 4px 14px;font-size:15px;font-weight:800;line-height:1.7;color:${INK};">${rich(d.closing||'')}</div>`);
+ o.push(`<div style="margin:18px 0 0 0;font-size:11.5px;line-height:1.7;color:#8a93a3;">${esc(d.footnote||'')}</div>`);
+ o.push('</div>');const f=d.footer;
+ o.push(`<div style="background:${NAVY};padding:16px 28px;font-size:12px;line-height:1.7;color:#c9d3e8;"><b style="color:${SPARK};">${esc(f.line1)}</b><br>${esc(f.line2)}<br>${esc(f.line3)}</div></div>`);
+ return o.join('\n');}
+function siteHead(title){return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Weekly Spark ${title}</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#14213d">
+<style>
+@media (max-width:640px){
+ body{padding:8px !important}
+ .ws-pad{padding:4px 14px 20px 14px !important}
+ .ws-col{display:block !important;width:auto !important}
+ .ws-colsep{border-right:none !important;border-bottom:1px solid #e3e7ee}
+ .ws-lab{display:block !important;width:auto !important;padding:8px 10px 0 10px !important}
+ .ws-val{display:block !important;padding:2px 10px 8px 10px !important}
+}
+</style>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}<\/script></head>
+`;}
+function page(d,body){return siteHead(esc(d.meta.badges[0]))+`<body style="margin:0;padding:20px;background:#eceff4;"><div style="max-width:880px;margin:0 auto 10px auto;font-family:${FONT};font-size:13px;">`
+ +'<a href="./" style="color:#2563eb;text-decoration:none;font-weight:700;">← Weekly Spark 지난 호 목록</a></div>'+`${body}</body></html>`;}
+
+// ======== 화면 동작 ========
+let D=null,BODY='',VOLHTML='',FNAME='';
+const $=id=>document.getElementById(id);
+const plain=s=>String(s||'').replace(/\*\*/g,'').replace(/\[\[[+-]|[+-]\]\]/g,'');
+function fmt(dt){return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;}
+function addDays(dt,n){const x=new Date(dt);x.setDate(x.getDate()+n);return x;}
+function info(){const v=$('pubDate').value;if(!v)return null;const dt=new Date(v+'T00:00:00');
+ const weeks=Math.round((dt-BASE)/(7*864e5));const main=weeks%2===0;const vol=1+Math.floor(weeks/2);
+ const from=addDays(dt,main?-14:-7),to=addDays(dt,-1);return {dt,weeks,main,vol,from,to};}
+function nextMonday(){const t=new Date();t.setHours(0,0,0,0);const add=(8-t.getDay())%7;return addDays(t,add);}
+function prompt(){const i=info();if(!i)return '';const VV=String(i.vol).padStart(2,'0');
+ const per=`${fmt(i.from)} ~ ${fmt(i.to)}`;const pub=fmt(i.dt)+'(월)';
+ const kind=i.main?`본지 VOL.${VV}`:'법규 점검 주(법규 속보)';
+ return `너는 개인 공개 소식지 「Weekly Spark ⚡ — AI가 정리한 전기·통신·소방 소식 · 주택·건축 편」의 편집자다. 웹 검색을 반드시 사용해 아래 규칙대로 이번 호를 만들고, 마지막에 JSON 코드 블록 하나만 출력하라.
+
+[이번 작업]
+- 종류: ${kind}
+- 발행일: ${pub}
+- 대상 기간: ${per} (이 기간에 보도·공포·시행·예고된 것만)
+
+[독자와 원칙]
+- 독자: 주택·건축(공동주택 중심) 현장의 전기·통신·소방 설계·시공 담당자. AI 기술 기사 모음이 아니다.
+- 공개된 보도와 법령만 다룬다. 특정 회사명(작성자 소속 포함)·현장명·사내 자료는 절대 넣지 않는다.
+- 사실은 원문에서 확인한 것만 쓴다. 수치·날짜는 원문 그대로. 모르면 쓰지 말고 "원문 확인 필요"라고 적는다. 지어내지 않는다.
+- 기사 문장을 그대로 옮기지 말고 짧게 바꿔 쓴다. 모든 기사·법령에 실제로 열리는 원문 URL을 단다.
+- 중요한 말은 **굵게** 표시(한 문장에 1곳 이하).
+
+[법규 레이더]
+- 감시 법령: 전기안전관리법, 전기공사업법, 전력기술관리법, 전기설비기술기준, 한국전기설비규정(KEC), 친환경자동차법(충전시설), 정보통신공사업법, 방송통신설비의 기술기준에 관한 규정, 지능형 홈네트워크 설비 설치 및 기술기준, 소방시설법, 화재예방법, 소방시설공사업법, NFPC·NFTC, 주택법, 주택건설기준 등에 관한 규정·규칙, 건축법, 건축물의 설비기준 등에 관한 규칙, 공동주택관리법, 녹색건축물 조성 지원법, 산업안전보건법, 중대재해처벌법, 건설기술 진흥법.
+- 범위: 대상 기간에 [시행]·[공포]된 것 + 입법·행정예고([예고]). 국회 발의 법안은 제외.
+- 확인처: 국가법령정보센터(law.go.kr), 법제처 입법예고(moleg.go.kr), 국민참여입법센터(opinion.lawmaking.go.kr), 소방청·NFTC(nftc.nfire.go.kr), 국토부·기후에너지환경부·과기정통부 입법·행정예고.
+- 항목마다 "적용 기준(부칙)"이 핵심이다: 부칙의 적용례·경과조치(예: 시행 후 사업계획승인 신청분부터 / 건축허가 신청분부터)를 적는다. 확인 못 하면 "부칙 확인 필요".
+- 바뀐 조문을 원문 그대로 확인했을 때만 diff(신구대조)를 넣는다. 추가된 글자는 [[+추가+]], 삭제된 글자는 [[-삭제-]]로 감싼다. 확인 못 했으면 diff를 빼라.
+- 해당 없으면 items를 빈 배열로 두고 none_msg에 "이번 기간 감시 대상 법규 변경 없음"을 적는다.
+${i.main?`
+[본지 구성]
+- numbers: 이번 호 기사에서 나온 숫자 3개(출처 포함).
+- top3: 분야 무관 3건. 선정 기준 ① 주택·건축 현장 직접 영향 ② 설계·시공 기준 변경 ③ 사고·안전 이슈. 요약 3줄 + "현장 한 줄"(전기·통신·소방 담당자가 바로 확인할 일, 단정 대신 확인 권고형).
+- briefs: 전기·통신·소방 각 2~3건, 한 줄씩.
+- closing: 이번 호를 마무리하는 한 문장.`:`
+[법규 속보]
+- [시행]·[공포]가 하나도 없으면 JSON 대신 "이번 주 법규 속보 없음"이라고만 답하라.
+- 있으면 radar만 채우고 numbers·top3·briefs는 빈 배열로 둔다.`}
+
+[출력 JSON 형식] — 키 이름을 바꾸지 말 것
+\`\`\`json
+{
+  "file": "${i.main?'vol'+VV:'alert-'+fmt(i.dt).replace(/\./g,'')}",
+  "meta": {
+    "badges": ["${i.main?'VOL.'+VV:'법규 속보'}", "${i.main?'격주 발행':fmt(i.dt).slice(5)}"],
+    "subtitle": "AI가 정리한 전기·통신·소방 소식 · 주택·건축 편",
+    "period": "${per}",
+    "issued": "${pub}",
+    "one_line": "이번 호 키워드는 **‘키워드’** — 한 문장 설명"
+  },
+  "index": {"title": "목록에 보일 제목 한 줄", "tags": "⚖️ 법규 요약 · 📡 … · 🧯 … · ⚡ …"},
+  "radar": {
+    "items": [
+      {"stage": "시행|공포|예고", "law": "법령명", "ref": "호수(공포일) 조항",
+       "what": "무엇이 바뀌나 한 줄", "date": "시행일 또는 예고기간",
+       "apply": "부칙 적용 기준", "impact": "설계·시공 영향 한 줄",
+       "links": [["원문", "https://..."], ["신구비교", "https://..."]],
+       "diff": {"title": "제○조(제목) 제○항", "old": ["개정 전 조문"], "old_empty": "(종전 조문 없음)", "new": ["개정 후 조문, 바뀐 곳은 [[+추가+]] [[-삭제-]]"], "note": "[개정 날짜] [시행일] · 정본은 국가법령정보센터 원문 확인"}}
+    ],
+    "note": "**[예고]** 예고 확인 결과 한두 문장 (없으면 빈 문자열)",
+    "none_msg": "이번 기간 감시 대상 법규 변경 없음"
+  },
+  "numbers": [{"big": "33.8", "unit": "%", "t": "설명 (매체 날짜)"}],
+  "top3": [{"field": "전기|통신|소방", "source": "매체명", "date": "2026.11.02", "title": "제목", "url": "https://...",
+            "summary": ["요약1", "요약2", "요약3"], "insight": "현장 한 줄"}],
+  "briefs": [{"field": "전기", "items": [{"t": "한 줄 소식", "src": "매체, 11.03", "url": "https://..."}]},
+             {"field": "통신", "items": []}, {"field": "소방", "items": []}],
+  "closing": "맺음말 한 문장",
+  "footnote": "점검 범위·기준일: ${fmt(i.dt)} 기준, 대상 기간 ${per}. 뉴스는 웹 검색으로 수집해 주택·건축 관련성으로 선별. 법규는 국가법령정보센터 현행 법령, 법제처 입법예고 목록, 소방청 게시물을 감시 목록과 대조함(고시·공고 행정예고는 게시 시점 차이로 누락될 수 있음). 요약과 ‘현장 한 줄’은 참고용 해석이며, 법적 판단은 반드시 원문과 부칙을 확인할 것."
+}
+\`\`\`
+JSON은 문법 오류 없이(따옴표 안의 줄바꿈 금지) 출력하고, JSON 앞에는 확인이 필요한 사항을 3줄 이내로 적어라.`;}
+function refreshKind(){const i=info();if(!i){$('kind').textContent='';return;}
+ $('kind').textContent=i.weeks<0?'(2026.11.09 이후 월요일을 고르세요)':(i.main?`→ 본지 VOL.${String(i.vol).padStart(2,'0')}`:'→ 법규 점검 주(속보)');
+ $('promptBox').value=prompt();}
+async function copyText(t,el,msg){try{await navigator.clipboard.writeText(t);el.className='msg ok';el.textContent=msg;}catch(e){el.className='msg err';el.textContent='복사가 막혔습니다. 직접 선택해서 복사해 주세요.';}}
+function copyPrompt(){refreshKind();copyText($('promptBox').value,$('pmsg'),'✔ 복사했습니다. 사내 GPT 새 채팅에 붙여 넣으세요. (웹 검색 켜기, 모델 GPT-6.1 Terra)');}
+function togglePrompt(){const b=$('promptBox');b.style.display=b.style.display==='none'?'block':'none';}
+function parseJSON(t){t=t.trim();const m=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(m)t=m[1];const s=t.indexOf('{'),e=t.lastIndexOf('}');if(s<0||e<0)throw new Error('JSON을 찾지 못했습니다.');return JSON.parse(t.slice(s,e+1));}
+function make(){const el=$('mmsg');
+ try{D=parseJSON($('json').value);}catch(e){el.className='msg err';el.textContent='읽기 실패: '+e.message+'\n→ AI에게 "JSON 문법 오류 없이 다시 출력해 줘"라고 요청하세요.';return;}
+ const miss=[];if(!D.meta||!D.meta.badges)miss.push('meta.badges');if(!D.meta||!D.meta.one_line)miss.push('meta.one_line');if(!D.radar)D.radar={items:[]};
+ if(miss.length){el.className='msg err';el.textContent='빠진 항목: '+miss.join(', ');return;}
+ const b0=D.meta.badges[0]||'';const vm=b0.match(/VOL\.?\s*(\d+)/i);
+ FNAME=(D.file||(vm?'vol'+vm[1].padStart(2,'0'):'issue'))+'.html';
+ D.meta.subtitle=D.meta.subtitle||'AI가 정리한 전기·통신·소방 소식 · 주택·건축 편';
+ const issuedShort=(D.meta.issued||'').replace(/\(.*\)/,'');
+ D.footer=D.footer||{line1:`Weekly Spark ⚡ · ${b0} · ${issuedShort} 발행 · 격주 월요일`,line2:LINE2,line3:LINE3};
+ BODY=build(D,WATCH);VOLHTML=page(D,BODY);
+ $('pv').srcdoc=VOLHTML;$('outCard').style.display='block';
+ const warn=[];const txt=JSON.stringify(D);
+ if(/example\.com|https:\/\/\.\.\./.test(txt))warn.push('예시 주소(https://...)가 남아 있습니다');
+ (D.radar.items||[]).forEach(it=>{if(!it.links||!it.links.length)warn.push(`법규 "${it.law}"에 원문 링크가 없습니다`);});
+ el.className='msg ok';el.textContent=`✔ 만들었습니다 → ${FNAME}`+(warn.length?'\n⚠ '+warn.join('\n⚠ '):'');
+ $('outCard').scrollIntoView({behavior:'smooth'});}
+function download(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/html;charset=utf-8'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+function dlVol(){if(VOLHTML)download(FNAME,VOLHTML);}
+function card(){const m=D.meta,ix=D.index||{};const per=(m.period||'').replace(/\(.\)/g,'').replace(/\d{4}\./g,'').replace(/\s*[~–]\s*/,'–');
+ const title=ix.title||plain(m.one_line);const tags=ix.tags||(D.top3||[]).map(a=>(FIELD[a.field]||'')+' '+plain(a.title).slice(0,18)).join(' · ');
+ return {html:`<a href="${FNAME}" style="display:block;text-decoration:none;color:#1f2937;border:1px solid #e3e7ee;border-radius:10px;padding:14px 16px;margin-bottom:10px;">
+<div style="font-size:12px;color:#5b6472;">${esc(m.badges[0])} · ${esc((m.issued||'').replace(/\(.*\)/,''))} 발행 · 대상 ${esc(per)}</div>
+<div style="font-size:16px;font-weight:800;margin-top:3px;">${esc(title)}</div>
+<div style="font-size:13px;color:#5b6472;margin-top:4px;">${esc(tags)}</div></a>`,title};}
+async function getIndex(){const f=$('idxFile').files[0];if(f)return await f.text();
+ const r=await fetch('index.html?'+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('사이트 index.html을 불러오지 못했습니다');return await r.text();}
+async function dlIdx(){const el=$('omsg');try{let s=await getIndex();const MARK='<!-- 새 호는 이 줄 바로 아래에 추가 -->';
+ if(!s.includes(MARK))throw new Error('index.html에서 새 호 표시 줄을 찾지 못했습니다');
+ const re=new RegExp('<a href="'+FNAME.replace('.','\\.')+'"[\\s\\S]*?</a>\\n?');s=s.replace(re,'');
+ const c=card();s=s.replace(MARK,MARK+'\n'+c.html);
+ s=s.replace(/(<meta property="og:description" content=")[^"]*(")/,`$1격주 월요일 발행 · 이번 호: ${attr(c.title)}$2`);
+ download('index.html',s);el.className='msg ok';el.textContent='✔ index.html 내려받기 완료 (새 호 카드 맨 위에 추가)';}
+ catch(e){el.className='msg err';el.textContent=e.message+'\n→ 아래 「파일 선택」으로 기존 index.html을 고른 뒤 다시 누르세요.';}}
+function copyMail(){const m=D.meta,c=card();const url=SITE+FNAME;
+ const law=(D.radar.items||[]).map(it=>`⚖️ [${it.stage}] ${it.law} — ${plain(it.what)}`).join('\n')||'⚖️ 이번 기간 감시 대상 법규 변경 없음';
+ const top=(D.top3||[]).map((a,i)=>`${i+1}. ${plain(a.title)}`).join('\n');
+ const t=`[제목] Weekly Spark ⚡ ${m.badges[0]} — ${c.title}\n\n[본문]\n${plain(m.one_line)}\n\n${law}\n\n${top?'🔥 이번 호 꼭 볼 3건\n'+top+'\n\n':''}▶ 이번 호 전체 보기: ${url}\n▶ 지난 호 목록: ${SITE}\n\n${LINE3}`;
+ copyText(t,$('omsg'),'✔ 스티비 메일 제목·본문을 복사했습니다');}
+function copyEP(){copyText(BODY,$('omsg'),'✔ EP 에디터(HTML 모드)용 본문을 복사했습니다');}
+$('pubDate').valueAsDate=null;$('pubDate').value=(d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(nextMonday());
+$('pubDate').addEventListener('change',refreshKind);refreshKind();
+</script></body></html>
