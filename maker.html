@@ -31,6 +31,11 @@ small{color:#5b6472}
 <button onclick="copyPrompt()">요청문 복사</button> <button class="sub" onclick="togglePrompt()">요청문 보기</button>
 <div class="msg" id="pmsg"></div>
 <textarea id="promptBox" style="display:none" readonly></textarea>
+<div style="margin-top:12px;padding:12px 14px;background:#fff7dc;border-radius:10px">
+<p style="margin:0 0 4px 0"><b>법규 재점검 (꼭 하세요)</b> — 첫 답의 점검표에 「확인 못 함」이 많으면, <b>같은 채팅</b>에 아래 두 요청문을 차례로 붙여 넣습니다. 5~6개씩 나눠야 제대로 찾습니다. 마지막 답의 JSON을 2번 칸에 넣으세요.</p>
+<button class="sub" onclick="copyRe(1)">재점검 ① 복사 (주택·소방·통신·전기 핵심 5)</button>
+<button class="sub" onclick="copyRe(2)">재점검 ② 복사 (나머지 6묶음)</button>
+<div class="msg" id="rmsg"></div></div>
 </div>
 
 <div class="card"><h2><span class="n">2</span>AI 답(JSON) 붙여 넣고 만들기</h2>
@@ -50,7 +55,7 @@ small{color:#5b6472}
 <p><small>index.html은 현재 사이트의 목록을 불러와 새 호 카드를 맨 위에 넣습니다. 불러오기가 안 되면 아래에서 기존 index.html 파일을 골라 주세요.</small> <input type="file" id="idxFile" accept=".html"></p>
 <iframe id="pv"></iframe>
 </div>
-<p style="font-size:12px;color:#8a93a3">Weekly Spark 생성기 v1.3 (2026-11-10 수정: 법규 점검 강화·빈 분야 숨김·VOL.01 기간 1주) · 편집 기준은 요청문 안에 들어 있습니다. 결과는 반드시 원문 링크로 확인 후 게시하세요.</p>
+<p style="font-size:12px;color:#8a93a3">Weekly Spark 생성기 v1.4 (2026-11-10 수정: 법규 재점검 버튼·법규 점검 강화·빈 분야 숨김·VOL.01 기간 1주) · 편집 기준은 요청문 안에 들어 있습니다. 결과는 반드시 원문 링크로 확인 후 게시하세요.</p>
 </div>
 
 <script>
@@ -248,6 +253,17 @@ function refreshKind(){const i=info();if(!i){$('kind').textContent='';return;}
  $('promptBox').value=prompt();}
 async function copyText(t,el,msg){try{await navigator.clipboard.writeText(t);el.className='msg ok';el.textContent=msg;}catch(e){el.className='msg err';el.textContent='복사가 막혔습니다. 직접 선택해서 복사해 주세요.';}}
 function copyPrompt(){refreshKind();copyText($('promptBox').value,$('pmsg'),'✔ 복사했습니다. 사내 GPT 새 채팅에 붙여 넣으세요. (웹 검색 켜기, 모델 GPT-6.1 Terra)');}
+const RE={1:['주택건설기준 등에 관한 규정·규칙','소방시설 설치 및 관리에 관한 법률(시행령·시행규칙 포함)','NFTC(화재안전기술기준)·NFPC(화재안전성능기준) — 소방청 고시','지능형 홈네트워크 설비 설치 및 기술기준(고시)','전기안전관리법(시행령·시행규칙 포함)'],
+ 2:['한국전기설비규정(KEC)·전기설비기술기준(고시)','정보통신공사업법·방송통신설비의 기술기준에 관한 규정','건축법·건축물의 설비기준 등에 관한 규칙','주택법·공동주택관리법','소방시설공사업법·화재의 예방 및 안전관리에 관한 법률','녹색건축물 조성 지원법·친환경자동차법(충전시설)·전기공사업법·전력기술관리법']};
+function rePrompt(n){const i=info();if(!i)return '';const per=`${fmt(i.from)} ~ ${fmt(i.to)}`;
+ return `법규 점검을 다시 해 줘. 이번에는 아래 ${RE[n].length}개만 하나씩 깊게 확인해.
+- 대상 기간: ${per}
+- 공포는 이전이어도 시행일이 대상 기간 안에 들어오면 [시행]이다. 부칙의 "공포 후 ○개월이 경과한 날부터 시행" 단서 조항 때문에 일부 조항만 늦게 시행되는 경우를 반드시 확인해.
+- law.go.kr가 안 열리면 법제처·국토교통부·소방청·과학기술정보통신부·기후에너지환경부 보도자료, 법령 해설 사이트, 전문지(전기신문·소방방재신문·정보통신신문 등)에서 "(법령명) 시행", "(법령명) 개정 공포", "(대상 기간의 연·월) 시행" 같은 말로 찾아.
+- 대상 기간에 시작된 입법·행정예고도 확인해.
+${RE[n].map((x,k)=>`${k+1}) ${x}`).join('\n')}
+찾은 것은 시행일·근거 링크와 함께 점검표를 다시 쓰고, 이전 결과와 합쳐 JSON의 radar를 고친 뒤 JSON 전체를 다시 출력해. 확인하지 못한 것은 '확인 못 함'으로 남기고 지어내지 마.`;}
+function copyRe(n){copyText(rePrompt(n),$('rmsg'),`✔ 재점검 ${n===1?'①':'②'}를 복사했습니다. 같은 채팅에 붙여 넣으세요.`);}
 function togglePrompt(){const b=$('promptBox');b.style.display=b.style.display==='none'?'block':'none';}
 function parseJSON(t){t=t.trim();const m=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(m)t=m[1];const s=t.indexOf('{'),e=t.lastIndexOf('}');if(s<0||e<0)throw new Error('JSON을 찾지 못했습니다.');return JSON.parse(t.slice(s,e+1));}
 function make(){const el=$('mmsg');
